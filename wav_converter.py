@@ -1,8 +1,3 @@
-import os
-from tkinter import messagebox
-
-import yaml
-from pydub import AudioSegment
 
 
 def convert_to_wav():
@@ -29,3 +24,4 @@ def convert_to_wav():
                 raise FileNotFoundError("FFMPEG IS NOT INSTALLED")
 
     messagebox.showinfo("Finished", "All files should be converted to wav now!")
+

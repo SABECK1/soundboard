@@ -1,3 +1,4 @@
+
 import configparser
 import os
 import threading
@@ -13,6 +14,8 @@ from PIL import Image, ImageTk
 from pynput import keyboard
 import youtube_dl
 from wav_converter import convert_to_wav
+from Tracker import Tracker
+from downloader import Downloader
 
 pygame.init()
 is_capture = 0  # zero to request playback devices, non-zero to request recording devices
@@ -20,143 +23,6 @@ num = sdl2.get_num_audio_devices(is_capture)
 names = [str(sdl2.get_audio_device_name(i, is_capture), encoding="utf-8") for i in range(num)]
 print("\n".join(names))
 pygame.quit()
-
-with open(r"bin\config.yaml", "r") as r:
-    data = yaml.load(r, Loader=yaml.FullLoader)
-    ydl_path = data["settings"]["path"]
-    directory = ydl_path
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-ydl_opts = {
-    'format': 'bestaudio/best',
-    'outtmpl': f"{ydl_path}" + r"\%(title)s-%(id)s.%(ext)s",
-    'postprocessors': [{
-        'key': 'FFmpegExtractAudio',
-        'preferredcodec': 'wav',
-        'preferredquality': '192',
-    }],
-}
-
-
-class Tracker:
-    listening = False
-    save = set()
-    hotkey = ""
-    with open(r"bin\config.yaml", "r") as r:
-        data = yaml.load(r, Loader=yaml.FullLoader)
-    try:
-        pygame.mixer.init(devicename=data["settings"]["device"])
-        print("INIT SUCCESSFUL")
-    except:
-        print("Error Initialization")
-        pass
-
-    def __init__(self):
-
-        listener = keyboard.Listener(
-            on_press=self.on_press,
-            on_release=self.on_release)
-        listener.start()
-
-    @staticmethod
-    def on_press(key):
-        if Tracker.listening:
-            try:
-                Tracker.save.add(key.char)
-            except AttributeError:
-                Tracker.save.add(str(key))
-            try:
-                Tracker.hotkey = (" + ".join(sorted(Tracker.save)))
-            except TypeError:
-                pass
-
-            config_keys = Tracker.getpath(Tracker.data, Tracker.hotkey)
-            if config_keys:
-                soundX = config_keys[1]
-                # try:
-
-                pygame.mixer.music.load(Tracker.data["sounds"][soundX]["path"])
-                pygame.mixer.music.play()
-                # except pygame.error:
-                #     messagebox.showerror("Initialization failed!",
-                #                          "An Error has occured trying to initialize your sound device! \n"
-                #                          "Try a different output device!")
-
-    @staticmethod
-    def on_release(key):
-        if Tracker.listening:
-            try:
-                Tracker.save.remove(key.char)
-            except (AttributeError, KeyError):
-                Tracker.save.clear()
-
-    @staticmethod
-    def start_hotkey():
-        Tracker.listening = True
-
-    @staticmethod
-    def stop_hotkey():
-        Tracker.listening = False
-
-    @staticmethod
-    def getpath(nested_dict, value, prepath=()):
-        for k, v in nested_dict.items():
-            path = prepath + (k,)
-            if v == value:  # found value
-                return path
-            elif hasattr(v, 'items'):  # v is a dict
-                p = Tracker.getpath(v, value, path)  # recursive call
-                if p is not None:
-                    return p
-
-
-class Downloader:
-    WIDTH = 350
-    HEIGHT = 60
-
-    def __init__(self):
-        def on_focus_in(event):
-            self.input.set("")
-
-        self.input = StringVar()
-
-        self.download_win = customtkinter.CTkToplevel()
-        self.input.set(self.download_win.clipboard_get())
-        # self.download_win.geometry(f"{Downloader.WIDTH}x{Downloader.HEIGHT}")
-        self.download_win.columnconfigure(0, weight=1)
-        customtkinter.CTkLabel(master=self.download_win, text="Post your downloadlink (FFMPEG required)").grid(row=0,
-                                                                                                               column=0,
-                                                                                                               columnspan=2)
-        self.link = customtkinter.CTkEntry(master=self.download_win, textvariable=self.input)
-        self.link.grid(row=1, column=0, sticky="NEWS",
-                       columnspan=2)
-        customtkinter.CTkButton(master=self.download_win, text="Confirm",
-                                border_width=1, border_color="black",
-                                corner_radius=0, command=self.confirm).grid(row=2, column=0)
-
-        customtkinter.CTkButton(master=self.download_win, text="Cancel",
-                                border_width=1, border_color="black",
-                                corner_radius=0, command=self.cancel).grid(row=2, column=1)
-
-        self.link.bind("<FocusIn>", on_focus_in)
-
-    def cancel(self):
-        self.download_win.destroy()
-
-    def confirm(self):
-        self.download_win.destroy()
-        if not re.match("^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))"
-                        "(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$", self.link.get()):
-            messagebox.showerror("Enter a Youtube link", "This doesn't look like a Youtubelink!"
-                                                         " Post a real link.")
-            return
-        print(self.link.get())
-        try:
-            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([self.link.get()])
-        except:
-            messagebox.showerror("Error", "Download failed. It seems you haven't installed FFMPEG")
 
 
 class SoundBoard:
