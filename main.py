@@ -14,7 +14,7 @@ from PIL import Image, ImageTk
 from pynput import keyboard
 import youtube_dl
 from wav_converter import convert_to_wav
-from Tracker import Tracker
+from tracker import Tracker
 from downloader import Downloader
 
 pygame.init()
@@ -23,6 +23,17 @@ num = sdl2.get_num_audio_devices(is_capture)
 names = [str(sdl2.get_audio_device_name(i, is_capture), encoding="utf-8") for i in range(num)]
 print("\n".join(names))
 pygame.quit()
+
+
+def open_yaml():
+    with open(r"bin\config.yaml", "r") as r:
+        data = yaml.load(r, Loader=yaml.FullLoader)
+        return data
+
+
+def dump_yaml(data):
+    with open(r"bin\config.yaml", "w") as w:
+        yaml.dump(data, w)
 
 
 class SoundBoard:
@@ -57,7 +68,7 @@ class SoundBoard:
         self.canvas.grid(row=0, column=0)
 
         self.scrollbar = ttk.Scrollbar(self.root.frame_canvas, orient=VERTICAL, command=self.canvas.yview)
-        self.scrollbar.grid(row=0, column=2, sticky="NS")
+        self.scrollbar.grid(row=0, column=3, sticky="NS")
         self.canvas.configure(yscrollcommand=self.scrollbar.set, bg="#292929")
         self.canvas.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
         self.root.frame_right = customtkinter.CTkFrame(master=self.canvas)
@@ -137,12 +148,10 @@ class SoundBoard:
                                 border_color="black"
                                 ).grid(row=6, column=0, sticky="ES")
 
-        # customtkinter.CTkButton(master=self.root.frame_right,
-        #                         image=stop_png, text="",
-        #                         command=pygame.mixer.music.stop,
-        #                         corner_radius=6
-
-        # .place(height=30, width=30, relx=.93, rely=.87)
+        self.stop_btn = customtkinter.CTkButton(master=self.root.frame_canvas,
+                                                image=stop_png,
+                                                text="",
+                                                command=pygame.mixer.music.stop)
 
         self.root.frame_left.grid_rowconfigure(6, minsize=60, weight=1)
         self.root.frame_left.grid_columnconfigure(1, weight=1)
@@ -156,7 +165,7 @@ class SoundBoard:
         self.change_mode()
 
     def table(self):
-
+        data = open_yaml()
         SoundLabel = customtkinter.CTkLabel(master=self.root.frame_right,
                                             text="Sounds",
                                             width=20,
@@ -174,9 +183,6 @@ class SoundBoard:
                                              corner_radius=16)
         HotkeyLabel.grid(row=0, column=1, sticky="N", padx=26)
 
-        with open(r"bin\config.yaml", "r") as r:
-            data = yaml.load(r, Loader=yaml.FullLoader)
-
         def play_sound(idx):
             try:
                 pygame.mixer.music.load(data["sounds"][f"sound{idx}"]["path"])
@@ -186,12 +192,16 @@ class SoundBoard:
                 return
 
         def delete_sound(idx):
+            data = open_yaml()
+            if data["settings"]["ignore_message"] == 0:
+                if not messagebox.askyesno("Attention",
+                                           "This will delete the sound!\n(This message can be turned off via the settings menu!)"):
+                    return
             name_of_sound_to_delete = self.sound_entry[idx].get()
             key_of_sound_to_delete = Tracker.getpath(data, name_of_sound_to_delete)[1]
 
             del data["sounds"][key_of_sound_to_delete]
-            with open(r"bin\config.yaml", "w") as w:
-                yaml.dump(data, w)
+            dump_yaml(data)
             self.update()
 
         self.name_row = dict()
@@ -247,27 +257,30 @@ class SoundBoard:
             print("No Sound yet added")
         if len(data["sounds"]) < 9:
             self.scrollbar.grid_forget()
+            self.stop_btn.place(x=380, width=30, height=30, rely=.87)
         else:
             self.scrollbar.grid(row=0, column=1, sticky="NS")
+            self.stop_btn.place(x=350, width=30, height=30, rely=.87)
 
     def open_settings(self):
         def ask_folder_settings():
-            with open(r"bin\config.yaml", "r") as r:
-                data = (yaml.load(r, Loader=yaml.FullLoader))
-                path = data["settings"]["path"]
+            path = data["settings"]["path"]
             self.file_directory = filedialog.askdirectory(initialdir=path)
             self.settings_win.lift()
 
-        with open(r"bin\config.yaml", "r") as r:
-            data = (yaml.load(r, Loader=yaml.FullLoader))
+        data = open_yaml()
         device = data["settings"]["device"]
+        ignore_message = data["settings"]["ignore_message"]
+
         self.settings_win = customtkinter.CTkToplevel()
         self.settings_win.title("Settings")
         self.settings_win.attributes("-toolwindow", True)
 
         customtkinter.CTkButton(master=self.settings_win,
                                 command=ask_folder_settings,
-                                text="Set Default Directory").grid(row=1, column=0, padx=10, pady=5, columnspan=2)
+                                text="Set Default Directory").grid(row=1, column=0, padx=10, pady=5, columnspan=2,
+                                                                   sticky="W")
+
         self.dropdownvar = StringVar()
         if device:
             self.dropdownvar.set(device)
@@ -279,12 +292,17 @@ class SoundBoard:
         customtkinter.CTkLabel(master=self.settings_win, text="Restart needed when\nchanging this setting").grid(row=0,
                                                                                                                  column=0)
 
+        self.message = customtkinter.CTkSwitch(master=self.settings_win,
+                                               text="Disable Warningmessage when deleting sound")
+        self.message.grid(row=3, column=0, padx=10, pady=5, columnspan=2, sticky="W")
+
         self.mode = customtkinter.CTkSwitch(master=self.settings_win, text="Light Mode", command=self.change_mode)
+        self.mode.grid(row=2, column=0, padx=10, pady=5, columnspan=2, sticky="W")
 
-        self.mode.grid(row=2, column=0, padx=10, pady=5, columnspan=2)
-
-        if self.lightmode == 1:  # self, da es erst toggeln kann wenn das Fenster auch offen ist
+        if self.lightmode == 1:  # self.changemode definiert lightmode im Vorraus
             self.mode.toggle()
+        if ignore_message == 1:
+            self.message.toggle()
 
         self.settings_win.protocol("WM_DELETE_WINDOW", self.write_config_settings)
 
@@ -296,9 +314,9 @@ class SoundBoard:
         save = set()
 
         def sound_path():
-            with open(r"bin\config.yaml", "r") as r:
-                data = (yaml.load(r, Loader=yaml.FullLoader))
-                path = data["settings"]["path"]
+
+            data = open_yaml()
+            path = data["settings"]["path"]
             self.sound_path = filedialog.askopenfilename(initialdir=path)
             self.add_sounds_win.lift()
             self.path_var.set(self.sound_path)
@@ -390,28 +408,30 @@ class SoundBoard:
 
     @staticmethod
     def open_folder():
-        with open(r"bin\config.yaml", "r") as r:
-            data = yaml.load(r, Loader=yaml.FullLoader)
-            path = data["settings"]["path"]
+        data = open_yaml()
+        path = data["settings"]["path"]
         os.startfile(path)
 
     def write_config_settings(self):
-        with open(r"bin\config.yaml", "r") as r:
-            full_yaml = yaml.load(r, yaml.FullLoader)
-            try:
-                full_yaml["settings"]["path"] = self.file_directory
-            except AttributeError:
-                full_yaml["settings"]["path"] = "sounds_default"
-                print("No path given")
+        data = open_yaml()
+        try:
+            data["settings"]["path"] = self.file_directory
+        except AttributeError:
+            data["settings"]["path"] = "sounds_default"
+            print("No path given")
 
-            if self.dropdownvar.get() == "Preferred Audio Device":
-                full_yaml["settings"]["device"] = names[0]
-            else:
-                full_yaml["settings"]["device"] = self.dropdownvar.get()
+        if self.dropdownvar.get() == "Preferred Audio Device":
+            data["settings"]["device"] = names[0]
+        else:
+            data["settings"]["device"] = self.dropdownvar.get()
 
-            full_yaml["settings"]["lightmode"] = self.mode.get()
-        with open(r"bin\config.yaml", "w") as w:
-            yaml.dump(full_yaml, w)
+        if self.message.get() == 1:
+            data["settings"]["ignore_message"] = True
+        else:
+            data["settings"]["ignore_message"] = False
+
+        data["settings"]["lightmode"] = self.mode.get()
+        dump_yaml(data)
 
         self.settings_win.destroy()
 
@@ -439,12 +459,11 @@ class SoundBoard:
         else:
             sound_name = self.sound_name.get()
 
-        with open(r"bin\config.yaml", "r") as r:
-            full_yaml = yaml.load(r, yaml.FullLoader)
-        sounds = full_yaml['sounds']
+        data = open_yaml()
+        sounds = data['sounds']
 
         new_sound = dict(path=sound_path, name=sound_name, hotkey=self.hotkey)
-        print(self.hotkey)
+
         try:
             result1 = any(sound_name in d.values() for d in sounds.values())
             result2 = any(self.hotkey in d.values() for d in sounds.values())
@@ -474,22 +493,18 @@ class SoundBoard:
                     print(sounds[key])
                     break
             except TypeError:  # if
-                full_yaml["sounds"] = {f'sound{idx}': new_sound}
+                data["sounds"] = {f'sound{idx}': new_sound}
                 break
 
-        with open(r"bin\config.yaml", "w") as w:
-            yaml.dump(full_yaml, w)
-
-        with open(r"bin\config.yaml", "r") as r:
-            Tracker.data = yaml.load(r, Loader=yaml.FullLoader)  # After writing a sound, data needs to be renewed
+        dump_yaml(data)
+        Tracker.data = open_yaml()  # After writing a sound, data needs to be renewed
 
         self.add_sounds_win.destroy()
         self.table()  # Draw new Entries and Update root
         self.root.update()
 
     def write_config_remove(self):
-        with open(r"bin\config.yaml", "r") as r:
-            data = yaml.load(r, Loader=yaml.FullLoader)
+        data = open_yaml()
 
         try:
             del data["sounds"][
@@ -499,26 +514,21 @@ class SoundBoard:
             self.remove_sound_win.lift()
             return
 
-        with open(r"bin\config.yaml", "w") as w:
-            yaml.dump(data, w)
+        dump_yaml(data)
         self.remove_sound_win.destroy()
         self.update()
 
     def change_mode(self):
+        # Reagiert auf sofortige Änderungen die nicht der config sofort zugeschrieben werden (lightmode ohne schreiben der config)
         try:
             if self.mode.get() == 1:
                 customtkinter.set_appearance_mode("light")
-
             else:
                 customtkinter.set_appearance_mode("dark")
-
         except AttributeError:
-            with open(r"bin\config.yaml", "r") as r:
-                data = (yaml.load(r, Loader=yaml.FullLoader))
+                data = open_yaml()
                 self.lightmode = data["settings"]["lightmode"]
-
                 if self.lightmode == 1:
-
                     customtkinter.set_appearance_mode("light")
                 else:
                     customtkinter.set_appearance_mode("dark")
