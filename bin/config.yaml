@@ -1,0 +1,41 @@
+settings:
+  device: VoiceMeeter VAIO3 Input (VB-Audio VoiceMeeter VAIO3)
+  lightmode: 0
+  path: sounds_default
+sounds:
+  sound1:
+    hotkey: null
+    name: ambient1.wav
+    path: C:/Users/sammy/PycharmProjects/Soundboard/sounds_default/ambient1.wav
+  sound10:
+    hotkey: null
+    name: MesaBiomeTheme.wav
+    path: C:/Users/sammy/PycharmProjects/Soundboard/sounds_default/MesaBiomeTheme.wav
+  sound11:
+    hotkey: null
+    name: laboratory.wav
+    path: C:/Users/sammy/PycharmProjects/Soundboard/sounds_default/laboratory.wav
+  sound2:
+    hotkey: null
+    name: radiance.wav
+    path: C:/Users/sammy/PycharmProjects/Soundboard/sounds_default/radiance.wav
+  sound3:
+    hotkey: null
+    name: ocean.wav
+    path: C:/Users/sammy/PycharmProjects/Soundboard/sounds_default/ocean.wav
+  sound4:
+    hotkey: null
+    name: ambient2.wav
+    path: C:/Users/sammy/PycharmProjects/Soundboard/sounds_default/ambient2.wav
+  sound5:
+    hotkey: null
+    name: forest.wav
+    path: C:/Users/sammy/PycharmProjects/Soundboard/sounds_default/forest.wav
+  sound6:
+    hotkey: null
+    name: ambient4.wav
+    path: C:/Users/sammy/PycharmProjects/Soundboard/sounds_default/ambient4.wav
+  sound7:
+    hotkey: null
+    name: Boss1.wav
+    path: C:/Users/sammy/PycharmProjects/Soundboard/sounds_default/Boss1.wav
