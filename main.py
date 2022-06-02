@@ -187,8 +187,8 @@ class SoundBoard:
             try:
                 pygame.mixer.music.load(data["sounds"][f"sound{idx}"]["path"])
                 pygame.mixer.music.play()
-            except pygame.error:
-                messagebox.showerror("Corrupted File", "For some reason this file cannot be played. Try another file!")
+            except (pygame.error, KeyError):
+                messagebox.showerror("Corrupted or missing file", "For some reason this file cannot be played. Try another file!")
                 return
 
         def delete_sound(idx):
@@ -271,6 +271,7 @@ class SoundBoard:
         data = open_yaml()
         device = data["settings"]["device"]
         ignore_message = data["settings"]["ignore_message"]
+        lightmode = data["settings"]["lightmode"]
 
         self.settings_win = customtkinter.CTkToplevel()
         self.settings_win.title("Settings")
@@ -299,8 +300,9 @@ class SoundBoard:
         self.mode = customtkinter.CTkSwitch(master=self.settings_win, text="Light Mode", command=self.change_mode)
         self.mode.grid(row=2, column=0, padx=10, pady=5, columnspan=2, sticky="W")
 
-        if self.lightmode == 1:  # self.changemode definiert lightmode im Vorraus
+        if lightmode == 1:
             self.mode.toggle()
+
         if ignore_message == 1:
             self.message.toggle()
 
@@ -522,15 +524,19 @@ class SoundBoard:
         # Reagiert auf sofortige Änderungen die nicht der config sofort zugeschrieben werden (lightmode ohne schreiben der config)
         try:
             if self.mode.get() == 1:
+                self.canvas.configure(bg="white", highlightbackground="white")
                 customtkinter.set_appearance_mode("light")
             else:
                 customtkinter.set_appearance_mode("dark")
+                self.canvas.configure(bg="#292929", highlightbackground="#292929")
         except AttributeError:
                 data = open_yaml()
                 self.lightmode = data["settings"]["lightmode"]
                 if self.lightmode == 1:
+                    self.canvas.configure(bg="white", highlightbackground="white")
                     customtkinter.set_appearance_mode("light")
                 else:
+                    self.canvas.configure(bg="#292929", highlightbackground="#292929")
                     customtkinter.set_appearance_mode("dark")
 
     def update(self):
