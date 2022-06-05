@@ -1,23 +1,24 @@
-
 import configparser
 import os
 import threading
-import natsort
-from tkinter import *
 import webbrowser
+from tkinter import *
 from tkinter import filedialog, messagebox, ttk
+
 import customtkinter
+import natsort
 import pygame
 import pygame._sdl2 as sdl2
 import yaml
 from PIL import Image, ImageTk
 from pynput import keyboard
-import youtube_dl
-from wav_converter import convert_to_wav
-from tracker import Tracker
+
 from downloader import Downloader
+from tracker import Tracker
+from wav_converter import convert_to_wav
 
 pygame.init()
+
 is_capture = 0  # zero to request playback devices, non-zero to request recording devices
 num = sdl2.get_num_audio_devices(is_capture)
 names = [str(sdl2.get_audio_device_name(i, is_capture), encoding="utf-8") for i in range(num)]
@@ -29,6 +30,9 @@ def open_yaml():
     with open(r"bin\config.yaml", "r") as r:
         data = yaml.load(r, Loader=yaml.FullLoader)
         return data
+
+
+pygame.mixer.init(devicename=open_yaml()["settings"]["device"])
 
 
 def dump_yaml(data):
@@ -59,27 +63,32 @@ class SoundBoard:
         # Config of frame_right and Scrollbar
         style = ttk.Style()
         style.theme_use('default')
-        style.configure("Vertical.TScrollbar", background="grey75", bordercolor="#292929", arrowcolor="#292929",
+        style.configure("Vertical.TScrollbar", background="#292929", bordercolor="#292929", arrowcolor="#292929",
                         troughcolor="#292929")
-        self.root.frame_canvas = customtkinter.CTkFrame(master=self.root, corner_radius=0)
-        self.root.frame_canvas.grid(row=0, column=1, padx=20, pady=20, sticky="NEWS")
-        self.root.frame_canvas.columnconfigure(0, weight=1)
+        self.root.frame_canvas = customtkinter.CTkFrame(master=self.root, corner_radius=0, background="#292929")
+        self.root.frame_canvas.grid(row=0, column=2,  pady=20, sticky="NEWS")
+
         self.canvas = Canvas(self.root.frame_canvas, highlightthickness=1, highlightbackground="#292929")
-        self.canvas.grid(row=0, column=0)
+        self.canvas.grid(row=0, column=0, sticky="NEWS")
 
         self.scrollbar = ttk.Scrollbar(self.root.frame_canvas, orient=VERTICAL, command=self.canvas.yview)
-        self.scrollbar.grid(row=0, column=3, sticky="NS")
+        self.scrollbar.grid(row=0, column=4, sticky="NS")
         self.canvas.configure(yscrollcommand=self.scrollbar.set, bg="#292929")
         self.canvas.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
-        self.root.frame_right = customtkinter.CTkFrame(master=self.canvas)
+        self.root.frame_right = customtkinter.CTkFrame(master=self.canvas, highlightthickness=3,
+                                                       highlightbackground="#292929", corner_radius=0)
+
         self.root.frame_right.grid(row=0, column=0)
-        self.root.frame_canvas.rowconfigure(tuple(range(60)), weight=1)
-        self.root.frame_canvas.columnconfigure(tuple(range(60)), weight=1)
+        self.root.frame_right.bind("<Configure>", self.reset_scrollregion)
+
         self.canvas.create_window((0, 0), window=self.root.frame_right, anchor="nw")
 
+        # Bottom Frame
         self.root.frame_bottom = customtkinter.CTkFrame(master=self.root, height=20, corner_radius=0)
-        self.root.frame_bottom.grid(row=1, column=1, sticky="nswe")
+        self.root.frame_bottom.grid(row=1, column=1, sticky="EW", columnspan=3)
 
+
+        # All used pictures
         open_folder_png = ImageTk.PhotoImage(Image.open(r"bin\folder.png").convert("RGBA"))
         add_sound_png = ImageTk.PhotoImage(Image.open(r"bin\plus.png").convert("RGBA"))
         remove_sound_png = ImageTk.PhotoImage(Image.open(r"bin\minus.png").convert("RGBA"))
@@ -146,26 +155,48 @@ class SoundBoard:
                                 corner_radius=0,
                                 border_width=1,
                                 border_color="black"
-                                ).grid(row=6, column=0, sticky="ES")
+                                ).grid(row=6, column=0, sticky="WES")
 
         self.stop_btn = customtkinter.CTkButton(master=self.root.frame_canvas,
                                                 image=stop_png,
                                                 text="",
                                                 command=pygame.mixer.music.stop)
+        self.soundbar()
+        self.table()
+        self.change_mode()
+        self.configure()
 
+
+    def soundbar(self):
+        data = open_yaml()
+        def set_volume(value):
+            pygame.mixer.music.set_volume(round(value)/100) # Arbeitet von 0 bis 1
+            print(round(value)/100)
+            with open(r"bin\config.yaml","w") as w:
+                data["settings"]["volume"] = round(value)/100
+                yaml.dump(data, w)
+
+        volume_var = IntVar()
+        volume_var.set(data["settings"]["volume"]*100)
+        # Kann nur Ganze Zahlen weswegen from 0 to 1 nur 2 Steps besitzt
+        soundbar = customtkinter.CTkSlider(master=self.root, orient="vertical", from_=0, to=100, command=set_volume, variable=volume_var)
+        soundbar.grid(column=1, row=0, padx=10)
+
+    def configure(self):
         self.root.frame_left.grid_rowconfigure(6, minsize=60, weight=1)
         self.root.frame_left.grid_columnconfigure(1, weight=1)
         self.root.frame_left.grid_columnconfigure(0, weight=1)
         self.root.frame_bottom.grid_columnconfigure(0, weight=1)
-
-        self.root.grid_columnconfigure(1, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
+        self.root.grid_columnconfigure(2, weight=1)
         self.root.grid_rowconfigure(0, weight=1)
+        self.root.frame_canvas.rowconfigure(tuple(range(60)), weight=1)
+        self.root.frame_canvas.columnconfigure(tuple(range(60)), weight=1)
 
-        self.table()
-        self.change_mode()
 
     def table(self):
         data = open_yaml()
+
         SoundLabel = customtkinter.CTkLabel(master=self.root.frame_right,
                                             text="Sounds",
                                             width=20,
@@ -182,18 +213,26 @@ class SoundBoard:
                                              text_color="white",
                                              corner_radius=16)
         HotkeyLabel.grid(row=0, column=1, sticky="N", padx=26)
+        if len(data["sounds"]) < 9:
+            self.scrollbar.grid_forget()
+            self.stop_btn.place(relx=.92, width=30, height=30, rely=.87)
+        else:
+            self.scrollbar.grid(row=0, column=4, sticky="NS")
+            self.stop_btn.place(x=350, width=30, height=30, rely=.87)
 
         def play_sound(idx):
+
             try:
-                pygame.mixer.music.load(data["sounds"][f"sound{idx}"]["path"])
+                pygame.mixer.music.load(data["sounds"][f"sound0{idx}"]["path"])
                 pygame.mixer.music.play()
             except (pygame.error, KeyError):
-                messagebox.showerror("Corrupted or missing file", "For some reason this file cannot be played. Try another file!")
+                messagebox.showerror("Corrupted or missing file",
+                                     "For some reason this file cannot be played. Try another file!")
                 return
 
         def delete_sound(idx):
             data = open_yaml()
-            if data["settings"]["ignore_message"] == 0:
+            if data["settings"]["ignore_message"] == False:
                 if not messagebox.askyesno("Attention",
                                            "This will delete the sound!\n(This message can be turned off via the settings menu!)"):
                     return
@@ -211,8 +250,8 @@ class SoundBoard:
         self.play_btn = dict()
         self.delete_btn = dict()
         try:
-            length = natsort.natsorted(data["sounds"].keys())
 
+            length = data["sounds"].keys()
             for i, val in enumerate(length):
                 try:
                     # data sounds als Liste um egal ob bspw Sound11 oben steht dieser auch herausgegriffen wird, da sonst sound{i} bspw nur bis 3 geht
@@ -255,12 +294,6 @@ class SoundBoard:
                     continue
         except (TypeError, IndexError, AttributeError):
             print("No Sound yet added")
-        if len(data["sounds"]) < 9:
-            self.scrollbar.grid_forget()
-            self.stop_btn.place(x=380, width=30, height=30, rely=.87)
-        else:
-            self.scrollbar.grid(row=0, column=1, sticky="NS")
-            self.stop_btn.place(x=350, width=30, height=30, rely=.87)
 
     def open_settings(self):
         def ask_folder_settings():
@@ -486,7 +519,10 @@ class SoundBoard:
         idx = 0
         while True:
             idx += 1
-            key = f'sound{idx}'
+            if idx < 10:
+                key = f'sound0{idx}'
+            else:
+                key = f'sound{idx}'
 
             try:
                 if key not in sounds:
@@ -497,13 +533,11 @@ class SoundBoard:
             except TypeError:  # if
                 data["sounds"] = {f'sound{idx}': new_sound}
                 break
-
         dump_yaml(data)
         Tracker.data = open_yaml()  # After writing a sound, data needs to be renewed
 
         self.add_sounds_win.destroy()
-        self.table()  # Draw new Entries and Update root
-        self.root.update()
+        self.update()
 
     def write_config_remove(self):
         data = open_yaml()
@@ -524,32 +558,38 @@ class SoundBoard:
         # Reagiert auf sofortige Änderungen die nicht der config sofort zugeschrieben werden (lightmode ohne schreiben der config)
         try:
             if self.mode.get() == 1:
-                self.canvas.configure(bg="white", highlightbackground="white")
+                self.canvas.configure(bg="#FFFFFF", highlightbackground="#FFFFFF")
+                self.root.frame_canvas.configure(fg_color="#FFFFFF")
+                self.root.frame_right.configure(highlightbackground="#FFFFFF")
                 customtkinter.set_appearance_mode("light")
             else:
                 customtkinter.set_appearance_mode("dark")
                 self.canvas.configure(bg="#292929", highlightbackground="#292929")
+                self.root.frame_canvas.configure(fg_color="#292929")
+                self.root.frame_right.configure(highlightbackground="#292929")
         except AttributeError:
-                data = open_yaml()
-                self.lightmode = data["settings"]["lightmode"]
-                if self.lightmode == 1:
-                    self.canvas.configure(bg="white", highlightbackground="white")
-                    customtkinter.set_appearance_mode("light")
-                else:
-                    self.canvas.configure(bg="#292929", highlightbackground="#292929")
-                    customtkinter.set_appearance_mode("dark")
+            data = open_yaml()
+            self.lightmode = data["settings"]["lightmode"]
+            if self.lightmode == 1:
+                self.canvas.configure(bg="#FFFFFF", highlightbackground="#FFFFFF")
+                self.root.frame_canvas.configure(fg_color="#FFFFFF")
+                self.root.frame_right.configure(highlightbackground="#FFFFFF")
+                customtkinter.set_appearance_mode("light")
+            else:
+                self.canvas.configure(bg="#292929", highlightbackground="#292929")
+                self.root.frame_right.configure(highlightbackground="#292929")
+                customtkinter.set_appearance_mode("dark")
+
+    def reset_scrollregion(self, event):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
     def update(self):
         for i in range(1, len(self.name_row) + 1):  # Delete all textvariables and according widgets/entries
-
             try:
                 self.sound_entry[i].destroy()
                 self.hotkey_entry[i].destroy()
                 self.play_btn[i].destroy()
                 self.delete_btn[i].destroy()
-
-
-
             except KeyError:
                 continue
         self.table()
