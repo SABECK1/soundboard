@@ -6,7 +6,6 @@ from tkinter import *
 from tkinter import filedialog, messagebox, ttk
 
 import customtkinter
-import natsort
 import pygame
 import pygame._sdl2 as sdl2
 import yaml
@@ -45,7 +44,6 @@ class SoundBoard:
     HEIGHT = 300
 
     def __init__(self):
-        Tracker()
         self.sound_path = None
         self.hotkey = None
         self.config = configparser.ConfigParser()
@@ -66,7 +64,7 @@ class SoundBoard:
         style.configure("Vertical.TScrollbar", background="#292929", bordercolor="#292929", arrowcolor="#292929",
                         troughcolor="#292929")
         self.root.frame_canvas = customtkinter.CTkFrame(master=self.root, corner_radius=0, background="#292929")
-        self.root.frame_canvas.grid(row=0, column=2,  pady=20, sticky="NEWS")
+        self.root.frame_canvas.grid(row=0, column=2, pady=20, sticky="NEWS")
 
         self.canvas = Canvas(self.root.frame_canvas, highlightthickness=1, highlightbackground="#292929")
         self.canvas.grid(row=0, column=0, sticky="NEWS")
@@ -86,7 +84,6 @@ class SoundBoard:
         # Bottom Frame
         self.root.frame_bottom = customtkinter.CTkFrame(master=self.root, height=20, corner_radius=0)
         self.root.frame_bottom.grid(row=1, column=1, sticky="EW", columnspan=3)
-
 
         # All used pictures
         open_folder_png = ImageTk.PhotoImage(Image.open(r"bin\folder.png").convert("RGBA"))
@@ -166,20 +163,21 @@ class SoundBoard:
         self.change_mode()
         self.configure()
 
-
     def soundbar(self):
         data = open_yaml()
+
         def set_volume(value):
-            pygame.mixer.music.set_volume(round(value)/100) # Arbeitet von 0 bis 1
-            print(round(value)/100)
-            with open(r"bin\config.yaml","w") as w:
-                data["settings"]["volume"] = round(value)/100
+            pygame.mixer.music.set_volume(round(value) / 100)  # Arbeitet von 0 bis 1
+            print(round(value) / 100)
+            with open(r"bin\config.yaml", "w") as w:
+                data["settings"]["volume"] = round(value) / 100
                 yaml.dump(data, w)
 
         volume_var = IntVar()
-        volume_var.set(data["settings"]["volume"]*100)
+        volume_var.set(data["settings"]["volume"] * 100)
         # Kann nur Ganze Zahlen weswegen from 0 to 1 nur 2 Steps besitzt
-        soundbar = customtkinter.CTkSlider(master=self.root, orient="vertical", from_=0, to=100, command=set_volume, variable=volume_var)
+        soundbar = customtkinter.CTkSlider(master=self.root, orient="vertical", from_=0, to=100, command=set_volume,
+                                           variable=volume_var)
         soundbar.grid(column=1, row=0, padx=10)
 
     def configure(self):
@@ -192,7 +190,6 @@ class SoundBoard:
         self.root.grid_rowconfigure(0, weight=1)
         self.root.frame_canvas.rowconfigure(tuple(range(60)), weight=1)
         self.root.frame_canvas.columnconfigure(tuple(range(60)), weight=1)
-
 
     def table(self):
         data = open_yaml()
@@ -596,6 +593,7 @@ class SoundBoard:
         self.root.update()
 
     def start(self):
+        Tracker()
         self.root.mainloop()
 
 
