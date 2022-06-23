@@ -15,13 +15,14 @@ with open(r"bin\config.yaml", "r") as r:
 
 ydl_opts = {
     'format': 'bestaudio/best',
-    'outtmpl': f"{ydl_path}" + r"\%(title)s.%(ext)s",
+    'outtmpl': f"{ydl_path}" + r"/%(title)s.%(ext)s",
     'noplaylist': True,
     'postprocessors': [{
         'key': 'FFmpegExtractAudio',
         'preferredcodec': 'wav',
-        'preferredquality': '192',
-    }],
+        'preferredquality': '192', }],
+    'restrictfilenames': True,
+    'forcefilename': True
 }
 
 
@@ -39,11 +40,13 @@ class Downloader:
         def on_focus_in_timeframe_stop(event):
             self.input_timeframe_stop.set("")
 
+        self.starttime_str = "Starttime in Seconds"
+        self.stoptime_str = "Stoptime in Seconds"
         self.input_link = StringVar()
         self.input_timeframe_start = StringVar()
-        self.input_timeframe_start.set("Starttime in Seconds")
+        self.input_timeframe_start.set(self.starttime_str)
         self.input_timeframe_stop = StringVar()
-        self.input_timeframe_stop.set("Stoptime in Seconds")
+        self.input_timeframe_stop.set(self.stoptime_str)
 
         self.download_win = customtkinter.CTkToplevel()
         self.download_win.title("Download a Sound")
@@ -95,14 +98,14 @@ class Downloader:
             return
         start_time = None
         stop_time = None
-        if self.input_timeframe_start.get() and self.input_timeframe_start.get() != "Time in Seconds":
+        if self.input_timeframe_start.get() is not None and self.input_timeframe_start.get() != self.starttime_str:
             if not self.input_timeframe_start.get().isdigit():
                 messagebox.showerror("That is not a number", "The timeframe you specified doesn't seem to be a number!")
                 return
             else:
                 start_time = int(self.input_timeframe_start.get()) * 1000
 
-        if self.input_timeframe_stop.get() and self.input_timeframe_stop.get() != "Time in Seconds":
+        if self.input_timeframe_stop.get() and self.input_timeframe_stop.get() != self.stoptime_str:
             if not self.input_timeframe_stop.get().isdigit():
                 messagebox.showerror("That is not a number", "The timeframe you specified doesn't seem to be a number!")
                 return
@@ -113,21 +116,23 @@ class Downloader:
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([self.link.get()])
                 result = ydl.extract_info(str(self.link.get()), download=False)  #
-                path = f"{ydl_path}\\{result['title']}.wav"
-                if os.path.exists(path):
-                    sound = AudioSegment.from_wav(path)
-                    if not start_time and not stop_time:
-                        sound_chunk = sound
-                    elif not start_time:
-                        sound_chunk = sound[:stop_time]
-                    elif not stop_time:
-                        sound_chunk = sound[start_time:]
-                    else:
-                        sound_chunk = sound[start_time:stop_time]
-                    sound_chunk.export(path, format="wav")
-                else:
-                    messagebox.showerror("Something went wrong!",
-                                         "Something went wrong when cutting the audio! Try again.")
+                filename = ydl.prepare_filename(result)
+                filename = f"{filename[:-4]}wav"  # prepare filename uses webm format https://github.com/ytdl-org/youtube-dl/issues/13750#issuecomment-466048967 doesnt fix problem
         except:
             messagebox.showerror("Error", "Download failed. It seems you haven't installed FFMPEG")
+        print(filename)
+        if os.path.exists(filename):
+            sound = AudioSegment.from_wav(filename)
+            if not start_time and not stop_time:
+                sound_chunk = sound
+            elif not start_time:
+                sound_chunk = sound[:stop_time]
+            elif not stop_time:
+                sound_chunk = sound[start_time:]
+            else:
+                sound_chunk = sound[start_time:stop_time]
+            sound_chunk.export(filename, format="wav")
+        else:
+            messagebox.showerror("Something went wrong!",
+                                 "Something went wrong when cutting the audio! Try again.")
         self.download_win.destroy()
