@@ -11,9 +11,8 @@ import pygame._sdl2 as sdl2
 import yaml
 from PIL import Image, ImageTk
 from pynput import keyboard
-
-from downloader import Downloader
 from tracker import Tracker
+from downloader import Downloader
 from wav_converter import convert_to_wav
 
 pygame.init()
@@ -21,7 +20,6 @@ pygame.init()
 is_capture = 0  # zero to request playback devices, non-zero to request recording devices
 num = sdl2.get_num_audio_devices(is_capture)
 names = [str(sdl2.get_audio_device_name(i, is_capture), encoding="utf-8") for i in range(num)]
-print("\n".join(names))
 pygame.quit()
 
 
@@ -30,13 +28,24 @@ def open_yaml():
         data = yaml.load(r, Loader=yaml.FullLoader)
         return data
 
+def dump_yaml(data):
+    with open(r"bin\config.yaml", "w") as w:
+        yaml.dump(data, w)
+
+
+data = open_yaml()
+sounddevice = data["settings"]["device"]
+
+if sounddevice is None:
+    with open(r"bin\config.yaml", "w") as w:
+        data["settings"]["device"] = names[0]
+        yaml.dump(data, w)
 
 pygame.mixer.init(devicename=open_yaml()["settings"]["device"])
 
 
-def dump_yaml(data):
-    with open(r"bin\config.yaml", "w") as w:
-        yaml.dump(data, w)
+
+
 
 
 class SoundBoard:
@@ -313,10 +322,9 @@ class SoundBoard:
                                                                    sticky="W")
 
         self.dropdownvar = StringVar()
-        if device:
-            self.dropdownvar.set(device)
-        else:
-            self.dropdownvar.set(names[0])
+
+        self.dropdownvar.set(device)
+
 
         OptionMenu(self.settings_win, self.dropdownvar, *names).grid(row=0, column=1, padx=10, pady=5)
 
