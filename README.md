@@ -7,8 +7,8 @@ To run it just run the main.py file.
 It is highly recommended to also have [ffmpeg](https://ffmpeg.org/) installed.
 
 Required libraries:
-- pygame
-- pyaml
-- customtkinter
-- pynput
+- pygame 2.4.0
+- pyaml 6.0
+- customtkinter 4.1.0
+- pynput 1.7.6
 
