@@ -8,20 +8,19 @@ from tkinter import filedialog, messagebox, ttk
 import customtkinter
 import pygame
 import pygame._sdl2 as sdl2
+import pygame._sdl2.audio as sdl2_audio
 import yaml
 from PIL import Image, ImageTk
 from pynput import keyboard
-
-from downloader import Downloader
 from tracker import Tracker
+from downloader import Downloader
 from wav_converter import convert_to_wav
 
 pygame.init()
 
-is_capture = 0  # zero to request playback devices, non-zero to request recording devices
-num = sdl2.get_num_audio_devices(is_capture)
-names = [str(sdl2.get_audio_device_name(i, is_capture), encoding="utf-8") for i in range(num)]
-print("\n".join(names))
+is_capture = False
+device_names = list(sdl2_audio.get_audio_device_names(False))
+print(device_names)
 pygame.quit()
 
 
@@ -30,13 +29,24 @@ def open_yaml():
         data = yaml.load(r, Loader=yaml.FullLoader)
         return data
 
+def dump_yaml(data):
+    with open(r"bin\config.yaml", "w") as w:
+        yaml.dump(data, w)
+
+
+data = open_yaml()
+sounddevice = data["settings"]["device"]
+
+if sounddevice is None:
+    with open(r"bin\config.yaml", "w") as w:
+        data["settings"]["device"] = device_names[0]
+        yaml.dump(data, w)
 
 pygame.mixer.init(devicename=open_yaml()["settings"]["device"])
 
 
-def dump_yaml(data):
-    with open(r"bin\config.yaml", "w") as w:
-        yaml.dump(data, w)
+
+
 
 
 class SoundBoard:
@@ -63,7 +73,7 @@ class SoundBoard:
         style.theme_use('default')
         style.configure("Vertical.TScrollbar", background="#292929", bordercolor="#292929", arrowcolor="#292929",
                         troughcolor="#292929")
-        self.root.frame_canvas = customtkinter.CTkFrame(master=self.root, corner_radius=0, background="#292929")
+        self.root.frame_canvas = customtkinter.CTkFrame(master=self.root, corner_radius=0)#, background="#292929")
         self.root.frame_canvas.grid(row=0, column=2, pady=20, sticky="NEWS")
 
         self.canvas = Canvas(self.root.frame_canvas, highlightthickness=1, highlightbackground="#292929")
@@ -73,7 +83,7 @@ class SoundBoard:
         self.scrollbar.grid(row=0, column=4, sticky="NS")
         self.canvas.configure(yscrollcommand=self.scrollbar.set, bg="#292929")
         self.canvas.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
-        self.root.frame_right = customtkinter.CTkFrame(master=self.canvas, highlightthickness=3,
+        self.root.frame_right = customtkinter.CTkFrame(master=self.canvas,highlightthickness=3,
                                                        highlightbackground="#292929", corner_radius=0)
 
         self.root.frame_right.grid(row=0, column=0)
@@ -313,12 +323,11 @@ class SoundBoard:
                                                                    sticky="W")
 
         self.dropdownvar = StringVar()
-        if device:
-            self.dropdownvar.set(device)
-        else:
-            self.dropdownvar.set(names[0])
 
-        OptionMenu(self.settings_win, self.dropdownvar, *names).grid(row=0, column=1, padx=10, pady=5)
+        self.dropdownvar.set(device)
+
+
+        OptionMenu(self.settings_win, self.dropdownvar, *device_names).grid(row=0, column=1, padx=10, pady=5)
 
         customtkinter.CTkLabel(master=self.settings_win, text="Restart needed when\nchanging this setting").grid(row=0,
                                                                                                                  column=0)
@@ -453,7 +462,7 @@ class SoundBoard:
             print("No path given")
 
         if self.dropdownvar.get() == "Preferred Audio Device":
-            data["settings"]["device"] = names[0]
+            data["settings"]["device"] = device_names[0]
         else:
             data["settings"]["device"] = self.dropdownvar.get()
 
