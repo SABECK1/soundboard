@@ -7,8 +7,11 @@ To run it just run the main.py file.
 It is highly recommended to also have [ffmpeg](https://ffmpeg.org/) installed.
 
 Required libraries:
-- pygame 2.4.0
-- pyaml 6.0
-- customtkinter 4.1.0
-- pynput 1.7.6
+customtkinter==4.1.0
+Pillow==9.5.0
+pydub==0.25.1
+pygame==2.4.0
+pynput==1.7.6
+PyYAML==6.0
+youtube_dl==2021.12.17
 
