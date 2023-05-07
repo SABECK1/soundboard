@@ -1,3 +1,4 @@
+This was a project to learn Python and test my skills, so the code may be a bit messy.
 
 A SoundBoard for usage with Voicemeeter, which allows the user to play sounds through discord, teamspeak etc. Purely written in Python with the usage of tkinter/customtkinter.
 
