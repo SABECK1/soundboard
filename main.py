@@ -261,10 +261,11 @@ class SoundBoard:
             length = data["sounds"].keys()
             for i, val in enumerate(length):
                 try:
-                    # data sounds als Liste um egal ob bspw Sound11 oben steht dieser auch herausgegriffen wird, da sonst sound{i} bspw nur bis 3 geht
-                    # da die Länge 3 beträgt aber Sound11 und Sound1/2 drin sind
+                    # Builds the table of the soundboard, sounds are stored in a list
+                    
+                    # Grabs the sound dict based on index
                     current_sound = list(data["sounds"])[i]
-                    i += 1  # Erst hier +1 um row richtig zu formatieren aber auch das 0-te Element der Liste abgreifen zu können
+                    i += 1  
 
                     self.name_row[i] = StringVar()
                     self.name_row[i].set(data["sounds"][current_sound]["name"])
@@ -323,7 +324,6 @@ class SoundBoard:
                                                                    sticky="W")
 
         self.dropdownvar = StringVar()
-
         self.dropdownvar.set(device)
 
 
